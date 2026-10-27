@@ -1,0 +1,21 @@
+# 数据文件（过大，不纳入版本库）
+模拟数据/
+*.csv
+
+# 密钥与配置
+.env
+*.key
+*.pem
+
+# 日志与临时文件
+*.log
+__pycache__/
+node_modules/
+
+# JDBC 驱动 jar（体积大，README 写明下载方式即可）
+mysql-connector-java-*.jar
+
+# 系统/IDE
+.DS_Store
+.idea/
+.vscode/
