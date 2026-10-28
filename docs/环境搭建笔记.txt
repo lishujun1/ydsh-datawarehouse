@@ -1,0 +1,15 @@
+# 环境搭建笔记
+
+## 问题1：Docker 启动 Hive 报错 ClassNotFoundException
+- **现象**：hive-metastore 容器启动后立即退出，docker logs 显示找不到 com.mysql.cj.jdbc.Driver。
+- **原因**：apache/hive:4.0.0 官方镜像不包含 MySQL JDBC 驱动。
+- **解决**：下载 mysql-connector-java-8.0.28.jar，编写 Dockerfile 将 jar 包 COPY 到 /opt/hive/lib/，构建自定义镜像 my-hive:4.0.0，并在 docker-compose.yml 中替换镜像。
+
+## 问题2：宿主机 3306 端口冲突
+- **现象**：MySQL 容器启动失败，提示端口被占用。
+- **解决**：在 docker-compose.yml 中将 MySQL 的端口映射改为 "3307:3306"，避开宿主机本地 MySQL 的 3306 端口。
+
+## 问题3：Git 提交时发现文件未追踪
+- **现象**：在终端执行了 Hive SQL 后，git status 显示 clean。
+- **原因**：终端执行的命令不会自动保存为本地文件。
+- **解决**：在本地创建 sql/ods 和 sql/clean 目录，将 SQL 代码保存为 .sql 文件后，重新 git add / commit / push。
