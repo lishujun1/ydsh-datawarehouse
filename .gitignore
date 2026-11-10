@@ -18,4 +18,4 @@ mysql-connector-java-*.jar
 # 系统/IDE
 .DS_Store
 .idea/
-.vscode/
+.vscode/".env" 

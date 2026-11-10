@@ -31,6 +31,8 @@ services:
         -Djavax.jdo.option.ConnectionPassword=root
     ports:
       - "9083:9083"
+    volumes:
+      - ./data/warehouse:/opt/hive/data/warehouse   # 关键：元数据侧也共享同一 warehouse
 
   hive-server:
     build: .
@@ -47,7 +49,8 @@ services:
       - "10000:10000"
       - "10002:10002"
     volumes:
-      - ./模拟数据:/data
+      - ./模拟数据:/data                            # 原有 ODS CSV 挂载，保留
+      - ./data/warehouse:/opt/hive/data/warehouse   # 关键：数据持久化到宿主机
 
 volumes:
   mysql_data:
