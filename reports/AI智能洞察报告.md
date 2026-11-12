@@ -55,3 +55,5 @@
 - ads_core_kpi.repurchase_rate = 14.398%: ADS 层固化口径，分母为全量下单用户数；
 - NL2SQL 即时计算返回 1.0: 临时 SQL 写法 ('count(case when cnt>=2 then 1 end)/count(*)) 未做订单状态过滤，且用户范围与 ADS 层不同；
 - 以 ADS 层 14.398% 为准，NL2SQL 结果仅作链路演示，不作为业务口径。
+
+<!-- 补充：复购率以 ADS 层固化口径为准，NL2SQL 即时结果仅作演示。 -->
