@@ -1,0 +1,9 @@
+flask
+flask-cors
+streamlit
+streamlit-echarts
+pandas
+pyhive
+openai
+python-dotenv
+requests

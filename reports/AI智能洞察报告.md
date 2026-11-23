@@ -8,7 +8,12 @@
 
 ### 1.2 数据一致性问题（关键前提）
 
-渠道数据四渠道合计约3,611万，品类Top10合计约5.08亿，与当日GMV50,273.3量级相差数百倍，说明渠道/品类表与当日GMV指标存在口径、粒度或统计范围不一致，归因需区分“当日异常”与“结构性数据”两层。
+渠道数据四渠道合计约3,611万，品类Top10合计约5.08亿，与当日GMV 50,273.3量级相差数百倍，说明渠道/品类表与当日GMV指标存在口径、粒度或统计范围不一致，归因需区分“当日异常”与“结构性数据”两层。
+
+> **口径说明（补充）**：
+> - 渠道 GMV 与当日 GMV 同属订单口径（`sum(pay_amount)`），量级差异源于**聚合范围**：渠道表为全年累计，当日表为单日。
+> - 品类销售额为**明细行口径**（`quantity × unit_price × (1 - discount)`），未摊分订单级优惠，与订单口径 GMV **不可直接加总或比较**。
+> - 详见 `指标定义.md` 口径说明表。
 
 ### 1.3 可能原因（按优先级）
 
@@ -38,9 +43,11 @@
 - 订单数：14,398笔
 - 客单价（AOV）：2,508.45
 - 活跃用户数：1,000人
-- 复购率：14.398%
+- 复购率：100%（1.0）
 
-数据关系校验：客单价2,508.45 \(\times\) 订单数14,398 \(\approx\) GMV36,116,687.06，数据内部一致性良好。活跃用户1,000人对应订单14,398笔，人均下单约14.4笔。整体呈现"用户规模较小、客单价较高、复购率偏低"的结构特征，收入高度依赖少量活跃用户的多笔下单。
+数据关系校验：客单价2,508.45 \(\times\) 订单数14,398 \(\approx\) GMV36,116,687.06，数据内部一致性良好。活跃用户1,000人对应订单14,398笔，人均下单约14.4笔。
+
+整体呈现"用户规模较小（1,000人）、客单价较高（2,508元）、复购率100%"的结构特征。复购率100%源于模拟数据中每位用户均产生多笔订单（人均14.4单），属数据构造特征，非真实业务复购水平；真实场景下该指标通常显著低于此值（新零售行业约20%~40%）。
 
 ## 3 数据来源与核对
 
@@ -49,11 +56,29 @@
 | 2024-01-20<br>GMV 50,273.3 | ads_sales_daily | select gmv from<br>ads_sales_daily<br>Where order_date='2024-01-20' |
 | 环比降幅 63.0% | ads_sales_daily | 前一日 gmv 与当日比值 |
 | 渠道数据 | dws_channel_day | select channel,sum(gmv) from |
+| GMV 36,116,687.06 | ads_core_kpi | select gmv from ads_core_kpi |
+| 订单数 14,398 | ads_core_kpi | select order_cnt from ads_core_kpi |
+| 客单价 2,508.45 | ads_core_kpi | select aov from ads_core_kpi |
+| 活跃用户数 1,000 | ads_core_kpi | select active_users from ads_core_kpi |
+| 复购率 100% | ads_core_kpi | select repurchase_rate from ads_core_kpi |
 
 ## 4 复购率口径说明
 
-- ads_core_kpi.repurchase_rate = 14.398%: ADS 层固化口径，分母为全量下单用户数；
-- NL2SQL 即时计算返回 1.0: 临时 SQL 写法 ('count(case when cnt>=2 then 1 end)/count(*)) 未做订单状态过滤，且用户范围与 ADS 层不同；
-- 以 ADS 层 14.398% 为准，NL2SQL 结果仅作链路演示，不作为业务口径。
+- **ADS 层固化口径**：`ads_core_kpi.repurchase_rate = 1.0`（100%）
+  - 分母：全量下单用户数，`count(distinct user_id)`，仅计 `pay_amount is not null` 的订单
+  - 分子：下单≥2次的去重用户数，`count(distinct case when cnt>=2 then user_id end)`
+  - SQL 见 `sql/ads/create_ads.sql` 第①段
 
-<!-- 补充：复购率以 ADS 层固化口径为准，NL2SQL 即时结果仅作演示。 -->
+- **修正记录**：
+  早期版本分子误用 `sum(case when u.cnt>=2 then 1 else 0 end)`，在 join 订单表后被放大 frequency 倍（每个用户膨胀成多行订单，每行计 1），得出 14.398% 的错误值。已改为 `count(distinct case when u.cnt>=2 then o.user_id end)`，修正后值为 100%，与手工核对 SQL 完全一致（`repurchase_users=1000, total_users=1000`）。
+
+- **业务解读**：
+  模拟数据集中 1,000 名下单用户人均产生 14.4 笔订单，全部满足"下单≥2次"，故复购率为 100%。该值反映的是**模拟数据的构造特征**，不代表真实业务复购水平；真实新零售场景下复购率通常为 20%~40%。若用于真实业务决策，需以实际用户行为数据重算。
+
+- **NL2SQL 即时计算**：
+  NL2SQL 临时 SQL 同样返回 1.0，与修正后 ADS 层一致，说明 NL2SQL 链路在复购率指标上口径正确。早期报告中"NL2SQL 1.0 与 ADS 14.398% 不一致"的判断，实为 ADS 旧版 SQL 错误，NL2SQL 结果反而正确。
+
+- **口径统一结论**：
+  以 ADS 层修正后值 100% 为准；NL2SQL 结果作为链路一致性验证，与 ADS 层一致；旧值 14.398% 仅作为修正过程记录保留，不再作为业务口径。
+
+<!-- 补充：复购率以 ADS 层固化口径为准，NL2SQL 即时结果与修正后 ADS 层一致。 -->

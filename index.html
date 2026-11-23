@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>云购生活 · 经营分析数据大屏</title>
+  <!-- 引入你本地下载的 ECharts -->
+  <script src="./echarts.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a1628; color: #fff; font-family: "Microsoft YaHei", sans-serif; overflow: hidden; }
+    
+    /* 大屏容器：固定 1920x1080 */
+    #screen { 
+      width: 1920px; 
+      height: 1080px; 
+      transform-origin: left top; 
+      position: absolute; 
+      display: flex; 
+      flex-direction: column; 
+      padding: 20px; 
+      gap: 20px;
+    }
+    
+    .title { 
+      text-align: center; 
+      font-size: 42px; 
+      font-weight: bold;
+      height: 60px; 
+      line-height: 60px;
+      background: linear-gradient(90deg, #00d4ff, #7b68ee); 
+      -webkit-background-clip: text; 
+      color: transparent; 
+      letter-spacing: 2px;
+    }
+    
+    .row { 
+      display: flex; 
+      gap: 20px; 
+      flex: 1; 
+    }
+    
+    .card { 
+      background: rgba(255, 255, 255, 0.03); 
+      border: 1px solid rgba(0, 212, 255, 0.3); 
+      border-radius: 8px; 
+      flex: 1; 
+      padding: 10px;
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.1) inset;
+    }
+    
+    .chart { 
+      width: 100%; 
+      height: 100%; 
+    }
+  </style>
+</head>
+<body>
+  <div id="screen">
+    <div class="title">云购生活 · 经营分析数据大屏</div>
+    
+    <div class="row">
+      <div class="card"><div class="chart" id="trend"></div></div>
+      <div class="card"><div class="chart" id="category"></div></div>
+    </div>
+    
+    <div class="row">
+      <div class="card"><div class="chart" id="paytype"></div></div>
+      <div class="card"><div class="chart" id="heatmap"></div></div>
+    </div>
+  </div>
+
+  <script>
+    // 初始化四个图表实例
+    const charts = {
+      trend: echarts.init(document.getElementById('trend')),
+      category: echarts.init(document.getElementById('category')),
+      paytype: echarts.init(document.getElementById('paytype')),
+      heatmap: echarts.init(document.getElementById('heatmap'))
+    };
+
+    // 自适应缩放
+    function resizeScreen() {
+      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const screen = document.getElementById('screen');
+      screen.style.transform = `scale(${scale})`;
+      screen.style.left = (window.innerWidth - 1920 * scale) / 2 + 'px';
+      screen.style.top = (window.innerHeight - 1080 * scale) / 2 + 'px';
+      Object.values(charts).forEach(chart => chart.resize());
+    }
+    window.addEventListener('resize', resizeScreen);
+    resizeScreen();
+
+    // 请求数据
+    const API_BASE = "http://localhost:5000";
+
+    // 1. 销售趋势
+    fetch(`${API_BASE}/api/trend`).then(r => r.json()).then(data => {
+      charts.trend.setOption({
+        title: { text: '销售趋势', textStyle: { color: '#fff', fontSize: 18 }, left: 'center' },
+        tooltip: { trigger: 'axis' },
+        grid: { left: '10%', right: '5%', bottom: '15%' },
+        xAxis: { type: 'category', data: data.map(x => x.order_date), axisLabel: { color: '#aaa', rotate: 30 } },
+        yAxis: { type: 'value', axisLabel: { color: '#aaa' } },
+        series: [{
+          type: 'line',
+          data: data.map(x => x.gmv),
+          smooth: true,
+          itemStyle: { color: '#00d4ff' },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'rgba(0, 212, 255, 0.5)' },
+              { offset: 1, color: 'rgba(0, 212, 255, 0.01)' }
+            ])
+          }
+        }]
+      });
+    }).catch(err => console.error("Trend Error:", err));
+
+    // 2. 品类销售
+    fetch(`${API_BASE}/api/category`).then(r => r.json()).then(data => {
+      charts.category.setOption({
+        title: { text: '品类销售 Top10', textStyle: { color: '#fff', fontSize: 18 }, left: 'center' },
+        tooltip: { trigger: 'axis' },
+        grid: { left: '15%', right: '5%', bottom: '15%' },
+        xAxis: { type: 'category', data: data.map(x => x.category), axisLabel: { color: '#aaa', rotate: 30 } },
+        yAxis: { type: 'value', axisLabel: { color: '#aaa' } },
+        series: [{ type: 'bar', data: data.map(x => x.total_sales), itemStyle: { color: '#7b68ee' } }]
+      });
+    }).catch(err => console.error("Category Error:", err));
+
+    // 3. 支付方式
+    fetch(`${API_BASE}/api/paytype`).then(r => r.json()).then(data => {
+      charts.paytype.setOption({
+        title: { text: '支付方式占比', textStyle: { color: '#fff', fontSize: 18 }, left: 'center' },
+        tooltip: { trigger: 'item' },
+        legend: { bottom: '5%', textStyle: { color: '#aaa' } },
+        series: [{
+          type: 'pie',
+          radius: ['40%', '65%'],
+          center: ['50%', '55%'],
+          data: data.map(x => ({ name: x.pay_type, value: x.cnt })),
+          label: { color: '#fff' }
+        }]
+      });
+    }).catch(err => console.error("Paytype Error:", err));
+
+    // 4. 热力图
+    fetch(`${API_BASE}/api/heatmap`).then(r => r.json()).then(data => {
+      const categories = [...new Set(data.map(x => x.category))];
+      const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+      const heatmapData = data.map(x => [hours.indexOf(x.hour_slot), categories.indexOf(x.category), x.sales]);
+
+      charts.heatmap.setOption({
+        title: { text: '时段×品类销售热力', textStyle: { color: '#fff', fontSize: 18 }, left: 'center' },
+        tooltip: { position: 'top' },
+        grid: { left: '20%', right: '10%', bottom: '15%' },
+        xAxis: { type: 'category', data: hours, splitArea: { show: true }, axisLabel: { color: '#aaa' } },
+        yAxis: { type: 'category', data: categories, splitArea: { show: true }, axisLabel: { color: '#aaa' } },
+        visualMap: {
+          min: 0, max: Math.max(...data.map(x => x.sales)), calculable: true,
+          orient: 'horizontal', left: 'center', bottom: '0%',
+          inRange: { color: ['#0a1628', '#00d4ff', '#ff6b6b'] }, textStyle: { color: '#fff' }
+        },
+        series: [{ type: 'heatmap', data: heatmapData, label: { show: false } }]
+      });
+    }).catch(err => console.error("Heatmap Error:", err));
+  </script>
+</body>
+</html>

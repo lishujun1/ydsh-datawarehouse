@@ -4,10 +4,9 @@ services:
     container_name: mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: superset
     ports:
       - "3307:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
@@ -67,7 +66,7 @@ services:
     ports:
       - "8088:8088"
     environment:
-      SUPERSET_SECRET_KEY: "change_me_random_string"
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
       SUPERSET_LOAD_EXAMPLES: "no"
       SUPERSET_CONFIG_PATH: "/app/superset_config.py"
       SUPERSET_DB_URI: "mysql://root:${MYSQL_ROOT_PASSWORD}@mysql:3306/superset?charset=utf8mb4"
@@ -82,6 +81,3 @@ services:
       superset init &&
       superset run -p 8088 --host 0.0.0.0 --with-threads --reload --debugger
       "
-
-volumes:
-  mysql_data:
