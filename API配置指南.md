@@ -15,3 +15,11 @@
    ```env
    DEEPSEEK_API_KEY=sk-你的真实密钥
    MYSQL_ROOT_PASSWORD=root
+## 三、密钥轮换与应急处理
+1. **轮换周期**：建议每 90 天轮换一次 `DEEPSEEK_API_KEY`，在 DeepSeek 平台重新生成后更新 `.env` 并重启服务。
+2. **泄露应急**：
+   - 立即在 DeepSeek 平台 revoke 旧 Key；
+   - 更新本地 `.env` 的 `DEEPSEEK_API_KEY`；
+   - 执行 `docker compose restart app`（或重启对应服务）。
+3. **数据库端口说明**：`docker-compose.yml` 中 MySQL 映射 `3307:3306` 仅用于本地调试；生产环境应移除 `ports` 段，仅保留容器内网通信。
+4. **Superset 弱密钥校验**：`superset_config.py` 中若 `SUPERSET_SECRET_KEY` 为空或为默认值，启动应直接报错，避免用弱密钥运行。
