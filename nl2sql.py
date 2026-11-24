@@ -87,8 +87,5 @@ if __name__ == "__main__":
             print(res.head(), "\n")
         except Exception as e:
             print("执行失败:", e, "\n")
-
-# main branch edit - 主分支修改
-
-# feature branch edit - 功能分支修改
-
+            
+# 合并冲突已解决：保留 feature 分支实现（详见 docs/Git协同记录.md）
